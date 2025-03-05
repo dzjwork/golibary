@@ -28,8 +28,7 @@ func main() {
 
 	// go ReadData(fd, &waitCount)
 	// StartzMulti(fd, &waitCount)
-	var a int = 'A'
-	fmt.Println("ss", a)
+
 	// test()
 	// pseqByte, _ := strconv.ParseInt("0000000000011EC18B7AFD"[16:18], 16, 48)
 	// fmt.Println(pseqByte, pseqByte&0x3F)
