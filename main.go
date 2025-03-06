@@ -26,8 +26,8 @@ func main() {
 
 	waitCount.Add(2)
 
-	go ReadData(fd, &waitCount)
-	StartzMulti(fd, &waitCount)
+	// go ReadData(fd, &waitCount)
+	// StartzMulti(fd, &waitCount)
 
 	// test()
 	// pseqByte, _ := strconv.ParseInt("0000000000011EC18B7AFD"[16:18], 16, 48)

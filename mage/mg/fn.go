@@ -20,6 +20,83 @@ type Fn interface {
 	Run(ctx context.Context) error
 }
 
+func checkF(target interface{}, args []interface{}) (hasContext, isNamespace bool, _ error) {
+	// 1、 获取到变量的类型
+	t := reflect.TypeOf(target)
+	// 2、 如果类型为空或者是函数类型直接退出
+	if t == nil || t.Kind() != reflect.Func {
+		return false, false, fmt.Errorf("non-function passed to mg.F: %T. The mg.F function accepts function names, such as mg.F(TargetA, \"arg1\", \"arg2\")", target)
+	}
+
+	// 返回参数个数不能超过1个
+	if t.NumOut() > 1 {
+		return false, false, fmt.Errorf("target has too many return values, must be zero or just an error: %T", target)
+	}
+	// 返回的参数必须是
+	if t.NumOut() == 1 && t.Out(0) != errType {
+		return false, false, fmt.Errorf("target's return value is not an error")
+	}
+
+	// more inputs than slots is an error if not variadic
+	if len(args) > t.NumIn() && !t.IsVariadic() {
+		return false, false, fmt.Errorf("too many arguments for target, got %d for %T", len(args), target)
+	}
+
+	if t.NumIn() == 0 {
+		return false, false, nil
+	}
+
+	x := 0
+	inputs := t.NumIn()
+
+	if t.In(0).AssignableTo(emptyType) {
+		// nameSpace func
+		isNamespace = true
+		x++
+		// callers must leave off the namespace value
+		inputs--
+	}
+	if t.NumIn() > x && t.In(x) == ctxType {
+		// callers must leave off the context
+		inputs--
+
+		// let the upper function know it should pass us a context.
+		hasContext = true
+
+		// skip checking the first argument in the below loop if it's a context, since first arg is
+		// special.
+		x++
+	}
+
+	if t.IsVariadic() {
+		if len(args) < inputs-1 {
+			return false, false, fmt.Errorf("too few arguments for target, got %d for %T", len(args), target)
+
+		}
+	} else if len(args) != inputs {
+		return false, false, fmt.Errorf("wrong number of arguments for target, got %d for %T", len(args), target)
+	}
+
+	for _, arg := range args {
+		argT := t.In(x)
+		if t.IsVariadic() && x == t.NumIn()-1 {
+			// For the variadic argument, use the slice element type.
+			argT = argT.Elem()
+		}
+		if !argTypes[argT] {
+			return false, false, fmt.Errorf("argument %d (%s), is not a supported argument type", x, argT)
+		}
+		passedT := reflect.TypeOf(arg)
+		if argT != passedT {
+			return false, false, fmt.Errorf("argument %d expected to be %s, but is %s", x, argT, passedT)
+		}
+		if x < t.NumIn()-1 {
+			x++
+		}
+	}
+	return hasContext, isNamespace, nil
+}
+
 // F takes a function that is compatible as a mage target, and any args that need to be passed to
 // it, and wraps it in an mg.Fn that mg.Deps can run. Args must be passed in the same order as they
 // are declared by the function. Note that you do not need to and should not pass a context.Context
@@ -88,79 +165,6 @@ func (f fn) ID() string {
 
 func (f fn) Run(ctx context.Context) error {
 	return f.f(ctx)
-}
-
-func checkF(target interface{}, args []interface{}) (hasContext, isNamespace bool, _ error) {
-	t := reflect.TypeOf(target)
-	if t == nil || t.Kind() != reflect.Func {
-		return false, false, fmt.Errorf("non-function passed to mg.F: %T. The mg.F function accepts function names, such as mg.F(TargetA, \"arg1\", \"arg2\")", target)
-	}
-
-	if t.NumOut() > 1 {
-		return false, false, fmt.Errorf("target has too many return values, must be zero or just an error: %T", target)
-	}
-	if t.NumOut() == 1 && t.Out(0) != errType {
-		return false, false, fmt.Errorf("target's return value is not an error")
-	}
-
-	// more inputs than slots is an error if not variadic
-	if len(args) > t.NumIn() && !t.IsVariadic() {
-		return false, false, fmt.Errorf("too many arguments for target, got %d for %T", len(args), target)
-	}
-
-	if t.NumIn() == 0 {
-		return false, false, nil
-	}
-
-	x := 0
-	inputs := t.NumIn()
-
-	if t.In(0).AssignableTo(emptyType) {
-		// nameSpace func
-		isNamespace = true
-		x++
-		// callers must leave off the namespace value
-		inputs--
-	}
-	if t.NumIn() > x && t.In(x) == ctxType {
-		// callers must leave off the context
-		inputs--
-
-		// let the upper function know it should pass us a context.
-		hasContext = true
-
-		// skip checking the first argument in the below loop if it's a context, since first arg is
-		// special.
-		x++
-	}
-
-	if t.IsVariadic() {
-		if len(args) < inputs-1 {
-			return false, false, fmt.Errorf("too few arguments for target, got %d for %T", len(args), target)
-
-		}
-	} else if len(args) != inputs {
-		return false, false, fmt.Errorf("wrong number of arguments for target, got %d for %T", len(args), target)
-	}
-
-	for _, arg := range args {
-		argT := t.In(x)
-		if t.IsVariadic() && x == t.NumIn()-1 {
-			// For the variadic argument, use the slice element type.
-			argT = argT.Elem()
-		}
-		if !argTypes[argT] {
-			return false, false, fmt.Errorf("argument %d (%s), is not a supported argument type", x, argT)
-		}
-		passedT := reflect.TypeOf(arg)
-		if argT != passedT {
-			return false, false, fmt.Errorf("argument %d expected to be %s, but is %s", x, argT, passedT)
-		}
-		if x < t.NumIn()-1 {
-			x++
-		}
-	}
-	return hasContext, isNamespace, nil
 }
 
 // Here we define the types that are supported as arguments/returns
