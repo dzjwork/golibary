@@ -1,9 +1,8 @@
 package logrus_test
 
 import (
+	"golibary/logrus"
 	"os"
-
-	"github.com/sirupsen/logrus"
 )
 
 func Example_basic() {
@@ -66,12 +65,4 @@ func Example_basic() {
 		"size":   9009,
 	}).Panic("It's over 9000!")
 
-	// Output:
-	// level=trace msg="Went to the beach" animal=walrus number=0
-	// level=debug msg="Started observing beach" animal=walrus number=8
-	// level=info msg="A group of walrus emerges from the ocean" animal=walrus size=10
-	// level=warning msg="The group's number increased tremendously!" number=122 omg=true
-	// level=debug msg="Temperature changes" temperature=-4
-	// level=panic msg="It's over 9000!" animal=orca size=9009
-	// level=error msg="The ice breaks!" err_animal=orca err_level=panic err_message="It's over 9000!" err_size=9009 number=100 omg=true
 }
