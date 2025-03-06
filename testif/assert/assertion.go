@@ -51,16 +51,14 @@ type ErrorAssertionFunc func(TestingT, error, ...interface{}) bool
 // for table driven tests.
 type PanicAssertionFunc = func(t TestingT, f PanicTestFunc, msgAndArgs ...interface{}) bool
 
-// Comparison is a custom function that returns true on success and false on failure
+// 自定义的比较函数，成功返回true，否则返回false
 type Comparison func() (success bool)
 
 /*
 	Helper functions
 */
 
-// ObjectsAreEqual determines if two objects are considered equal.
-//
-// This function does no assertion of any kind.
+// 断言两个字符串是否相等
 func ObjectsAreEqual(expected, actual interface{}) bool {
 	if expected == nil || actual == nil {
 		return expected == actual
@@ -713,10 +711,9 @@ func Nil(t TestingT, object interface{}, msgAndArgs ...interface{}) bool {
 	return Fail(t, fmt.Sprintf("Expected nil, but got: %#v", object), msgAndArgs...)
 }
 
-// isEmpty gets whether the specified object is considered empty or not.
+// 查看对象是否是空
 func isEmpty(object interface{}) bool {
 
-	// get nil case out of the way
 	if object == nil {
 		return true
 	}
@@ -724,28 +721,24 @@ func isEmpty(object interface{}) bool {
 	objValue := reflect.ValueOf(object)
 
 	switch objValue.Kind() {
-	// collection types are empty when they have no element
+	// 集合类型要查看元素数量
 	case reflect.Chan, reflect.Map, reflect.Slice:
 		return objValue.Len() == 0
-	// pointers are empty if nil or if the value they point to is empty
+	// 指针类型查看是否是nil或指针指向的值是空
 	case reflect.Ptr:
 		if objValue.IsNil() {
 			return true
 		}
 		deref := objValue.Elem().Interface()
 		return isEmpty(deref)
-	// for all other types, compare against the zero value
-	// array types are empty when they match their zero-initialized state
+	// 其它类型和0值比较
 	default:
 		zero := reflect.Zero(objValue.Type())
 		return reflect.DeepEqual(object, zero.Interface())
 	}
 }
 
-// Empty asserts that the specified object is empty.  I.e. nil, "", false, 0 or either
-// a slice or a channel with len == 0.
-//
-//	assert.Empty(t, obj)
+// 断言对象是否为空
 func Empty(t TestingT, object interface{}, msgAndArgs ...interface{}) bool {
 	pass := isEmpty(object)
 	if !pass {
@@ -875,10 +868,7 @@ func NotEqualValues(t TestingT, expected, actual interface{}, msgAndArgs ...inte
 	return true
 }
 
-// containsElement try loop over the list check if the list includes the element.
-// return (false, false) if impossible.
-// return (true, false) if element was not found.
-// return (true, true) if element was found.
+// 尝试在list中找到element元素，如果不可能则返回false,false、如果没有则返回true,false、如果存在则返回true,true
 func containsElement(list interface{}, element interface{}) (ok, found bool) {
 
 	listValue := reflect.ValueOf(list)
@@ -894,11 +884,13 @@ func containsElement(list interface{}, element interface{}) (ok, found bool) {
 		}
 	}()
 
+	// 字符串比较
 	if listKind == reflect.String {
 		elementValue := reflect.ValueOf(element)
 		return true, strings.Contains(listValue.String(), elementValue.String())
 	}
 
+	// 比较map中是否包含指定元素
 	if listKind == reflect.Map {
 		mapKeys := listValue.MapKeys()
 		for i := 0; i < len(mapKeys); i++ {
@@ -909,6 +901,7 @@ func containsElement(list interface{}, element interface{}) (ok, found bool) {
 		return true, false
 	}
 
+	// 比较数组中是否包含指定元素
 	for i := 0; i < listValue.Len(); i++ {
 		if ObjectsAreEqual(listValue.Index(i).Interface(), element) {
 			return true, true
@@ -918,12 +911,7 @@ func containsElement(list interface{}, element interface{}) (ok, found bool) {
 
 }
 
-// Contains asserts that the specified string, list(array, slice...) or map contains the
-// specified substring or element.
-//
-//	assert.Contains(t, "Hello World", "World")
-//	assert.Contains(t, ["Hello", "World"], "World")
-//	assert.Contains(t, {"Hello": "World"}, "Hello")
+// 断言字符串、数组或Map中是否包含指定的字符串
 func Contains(t TestingT, s, contains interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -1079,25 +1067,26 @@ func NotSubset(t TestingT, list, subset interface{}, msgAndArgs ...interface{}) 
 	return Fail(t, fmt.Sprintf("%q is a subset of %q", subset, list), msgAndArgs...)
 }
 
-// ElementsMatch asserts that the specified listA(array, slice...) is equal to specified
-// listB(array, slice...) ignoring the order of the elements. If there are duplicate elements,
-// the number of appearances of each of them in both lists should match.
-//
-// assert.ElementsMatch(t, [1, 3, 2, 3], [1, 3, 3, 2])
+// 比较A、B两个集合中的元素是否完全一样（不包括顺序）
 func ElementsMatch(t TestingT, listA, listB interface{}, msgAndArgs ...interface{}) (ok bool) {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
+
+	// 如果数组是空直接返回true
 	if isEmpty(listA) && isEmpty(listB) {
 		return true
 	}
 
+	// 如果参数有一个不是数组或切片就失败
 	if !isList(t, listA, msgAndArgs...) || !isList(t, listB, msgAndArgs...) {
 		return false
 	}
 
+	// 获取到只在A或只在B中的元素
 	extraA, extraB := diffLists(listA, listB)
 
+	// 如果任意一个切片不为空就说明存在元素另一个集合中是没有的
 	if len(extraA) == 0 && len(extraB) == 0 {
 		return true
 	}
@@ -1105,19 +1094,16 @@ func ElementsMatch(t TestingT, listA, listB interface{}, msgAndArgs ...interface
 	return Fail(t, formatListDiff(listA, listB, extraA, extraB), msgAndArgs...)
 }
 
-// isList checks that the provided value is array or slice.
+// 断言给定的集合是否是数组或切片
 func isList(t TestingT, list interface{}, msgAndArgs ...interface{}) (ok bool) {
 	kind := reflect.TypeOf(list).Kind()
 	if kind != reflect.Array && kind != reflect.Slice {
-		return Fail(t, fmt.Sprintf("%q has an unsupported type %s, expecting array or slice", list, kind),
-			msgAndArgs...)
+		return Fail(t, fmt.Sprintf("%q has an unsupported type %s, expecting array or slice", list, kind), msgAndArgs...)
 	}
 	return true
 }
 
-// diffLists diffs two arrays/slices and returns slices of elements that are only in A and only in B.
-// If some element is present multiple times, each instance is counted separately (e.g. if something is 2x in A and
-// 5x in B, it will be 0x in extraA and 3x in extraB). The order of items in both lists is ignored.
+// 返回只在A或只在B中的元素
 func diffLists(listA, listB interface{}) (extraA, extraB []interface{}) {
 	aValue := reflect.ValueOf(listA)
 	bValue := reflect.ValueOf(listB)
@@ -1125,15 +1111,17 @@ func diffLists(listA, listB interface{}) (extraA, extraB []interface{}) {
 	aLen := aValue.Len()
 	bLen := bValue.Len()
 
-	// Mark indexes in bValue that we already used
+	// 用于标记在bValue中使用过的索引
 	visited := make([]bool, bLen)
 	for i := 0; i < aLen; i++ {
 		element := aValue.Index(i).Interface()
 		found := false
 		for j := 0; j < bLen; j++ {
+			// 已经检索过的元素不再检索
 			if visited[j] {
 				continue
 			}
+			// 比较两个元素是否相等
 			if ObjectsAreEqual(bValue.Index(j).Interface(), element) {
 				visited[j] = true
 				found = true
@@ -1208,7 +1196,7 @@ func NotElementsMatch(t TestingT, listA, listB interface{}, msgAndArgs ...interf
 	return true
 }
 
-// Condition uses a Comparison to assert a complex condition.
+// 用于断言复杂的条件
 func Condition(t TestingT, comp Comparison, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -1763,8 +1751,7 @@ func NoFileExists(t TestingT, path string, msgAndArgs ...interface{}) bool {
 	return Fail(t, fmt.Sprintf("file %q exists", path), msgAndArgs...)
 }
 
-// DirExists checks whether a directory exists in the given path. It also fails
-// if the path is a file rather a directory or there is an error checking whether it exists.
+// 断言文件是否是目录
 func DirExists(t TestingT, path string, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()

@@ -8,7 +8,7 @@ import (
 	time "time"
 )
 
-// Conditionf uses a Comparison to assert a complex condition.
+// 断言复杂的条件
 func Conditionf(t TestingT, comp Comparison, msg string, args ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -16,12 +16,7 @@ func Conditionf(t TestingT, comp Comparison, msg string, args ...interface{}) bo
 	return Condition(t, comp, append([]interface{}{msg}, args...)...)
 }
 
-// Containsf asserts that the specified string, list(array, slice...) or map contains the
-// specified substring or element.
-//
-//	assert.Containsf(t, "Hello World", "World", "error message %s", "formatted")
-//	assert.Containsf(t, ["Hello", "World"], "World", "error message %s", "formatted")
-//	assert.Containsf(t, {"Hello": "World"}, "Hello", "error message %s", "formatted")
+// 断言字符串、数组或Map中是否包含指定的字符串
 func Containsf(t TestingT, s interface{}, contains interface{}, msg string, args ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -29,8 +24,7 @@ func Containsf(t TestingT, s interface{}, contains interface{}, msg string, args
 	return Contains(t, s, contains, append([]interface{}{msg}, args...)...)
 }
 
-// DirExistsf checks whether a directory exists in the given path. It also fails
-// if the path is a file rather a directory or there is an error checking whether it exists.
+// 断言给定路径是否是一个目录
 func DirExistsf(t TestingT, path string, msg string, args ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -38,11 +32,7 @@ func DirExistsf(t TestingT, path string, msg string, args ...interface{}) bool {
 	return DirExists(t, path, append([]interface{}{msg}, args...)...)
 }
 
-// ElementsMatchf asserts that the specified listA(array, slice...) is equal to specified
-// listB(array, slice...) ignoring the order of the elements. If there are duplicate elements,
-// the number of appearances of each of them in both lists should match.
-//
-// assert.ElementsMatchf(t, [1, 3, 2, 3], [1, 3, 3, 2], "error message %s", "formatted")
+// 比较A、B两个集合中的元素是否完全一样（不包括顺序）
 func ElementsMatchf(t TestingT, listA interface{}, listB interface{}, msg string, args ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -50,10 +40,7 @@ func ElementsMatchf(t TestingT, listA interface{}, listB interface{}, msg string
 	return ElementsMatch(t, listA, listB, append([]interface{}{msg}, args...)...)
 }
 
-// Emptyf asserts that the specified object is empty.  I.e. nil, "", false, 0 or either
-// a slice or a channel with len == 0.
-//
-//	assert.Emptyf(t, obj, "error message %s", "formatted")
+// 断言对象是否为空
 func Emptyf(t TestingT, object interface{}, msg string, args ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
