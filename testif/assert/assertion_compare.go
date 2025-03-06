@@ -398,11 +398,7 @@ func compare(obj1, obj2 interface{}, kind reflect.Kind) (compareResult, bool) {
 	return compareEqual, false
 }
 
-// Greater asserts that the first element is greater than the second
-//
-//	assert.Greater(t, 2, 1)
-//	assert.Greater(t, float64(2), float64(1))
-//	assert.Greater(t, "b", "a")
+// 断言e1是否大于e2
 func Greater(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -410,12 +406,7 @@ func Greater(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface
 	return compareTwoValues(t, e1, e2, []compareResult{compareGreater}, "\"%v\" is not greater than \"%v\"", msgAndArgs...)
 }
 
-// GreaterOrEqual asserts that the first element is greater than or equal to the second
-//
-//	assert.GreaterOrEqual(t, 2, 1)
-//	assert.GreaterOrEqual(t, 2, 2)
-//	assert.GreaterOrEqual(t, "b", "a")
-//	assert.GreaterOrEqual(t, "b", "b")
+// 断言e1是否等于e2
 func GreaterOrEqual(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -423,11 +414,7 @@ func GreaterOrEqual(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...in
 	return compareTwoValues(t, e1, e2, []compareResult{compareGreater, compareEqual}, "\"%v\" is not greater than or equal to \"%v\"", msgAndArgs...)
 }
 
-// Less asserts that the first element is less than the second
-//
-//	assert.Less(t, 1, 2)
-//	assert.Less(t, float64(1), float64(2))
-//	assert.Less(t, "a", "b")
+// 断言e1是否小于e2
 func Less(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -435,12 +422,7 @@ func Less(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface{})
 	return compareTwoValues(t, e1, e2, []compareResult{compareLess}, "\"%v\" is not less than \"%v\"", msgAndArgs...)
 }
 
-// LessOrEqual asserts that the first element is less than or equal to the second
-//
-//	assert.LessOrEqual(t, 1, 2)
-//	assert.LessOrEqual(t, 2, 2)
-//	assert.LessOrEqual(t, "a", "b")
-//	assert.LessOrEqual(t, "b", "b")
+// 断言e1是否小于等于e2
 func LessOrEqual(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -448,30 +430,29 @@ func LessOrEqual(t TestingT, e1 interface{}, e2 interface{}, msgAndArgs ...inter
 	return compareTwoValues(t, e1, e2, []compareResult{compareLess, compareEqual}, "\"%v\" is not less than or equal to \"%v\"", msgAndArgs...)
 }
 
-// Positive asserts that the specified element is positive
-//
-//	assert.Positive(t, 1)
-//	assert.Positive(t, 1.23)
+// 断言指定的值是否为整数
 func Positive(t TestingT, e interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
+	// 获取0值
 	zero := reflect.Zero(reflect.TypeOf(e))
+	// 比较e是否小于0，如果是返回true，否则返回false
 	return compareTwoValues(t, e, zero.Interface(), []compareResult{compareGreater}, "\"%v\" is not positive", msgAndArgs...)
 }
 
-// Negative asserts that the specified element is negative
-//
-//	assert.Negative(t, -1)
-//	assert.Negative(t, -1.23)
+// 判断指定的是否为负数
 func Negative(t TestingT, e interface{}, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
 	}
+	// 获取类型的0值
 	zero := reflect.Zero(reflect.TypeOf(e))
+	// 比较e是否小于0，如果是返回true，否则返回false
 	return compareTwoValues(t, e, zero.Interface(), []compareResult{compareLess}, "\"%v\" is not negative", msgAndArgs...)
 }
 
+// 比较两个值并查看值是否是期望的结果，如果是返回true，否则返回false
 func compareTwoValues(t TestingT, e1 interface{}, e2 interface{}, allowedComparesResults []compareResult, failMessage string, msgAndArgs ...interface{}) bool {
 	if h, ok := t.(tHelper); ok {
 		h.Helper()
@@ -479,15 +460,18 @@ func compareTwoValues(t TestingT, e1 interface{}, e2 interface{}, allowedCompare
 
 	e1Kind := reflect.ValueOf(e1).Kind()
 	e2Kind := reflect.ValueOf(e2).Kind()
+	// 类型不同无法比较
 	if e1Kind != e2Kind {
 		return Fail(t, "Elements should be the same type", msgAndArgs...)
 	}
 
+	// 比较两个对象大小，比较失败直接退出
 	compareResult, isComparable := compare(e1, e2, e1Kind)
 	if !isComparable {
 		return Fail(t, fmt.Sprintf("Can not compare type \"%s\"", reflect.TypeOf(e1)), msgAndArgs...)
 	}
 
+	// 如果比较结果不在期望的结果集中直接退出
 	if !containsValue(allowedComparesResults, compareResult) {
 		return Fail(t, fmt.Sprintf(failMessage, e1, e2), msgAndArgs...)
 	}
@@ -495,6 +479,7 @@ func compareTwoValues(t TestingT, e1 interface{}, e2 interface{}, allowedCompare
 	return true
 }
 
+// 查看比较结果是否在期望的比较结果集中
 func containsValue(values []compareResult, value compareResult) bool {
 	for _, v := range values {
 		if v == value {
