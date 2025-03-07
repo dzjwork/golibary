@@ -49,16 +49,15 @@ var (
 
 // dumpState contains information about the state of a dump operation.
 type dumpState struct {
-	w                io.Writer
-	depth            int
+	w                io.Writer // 输出流
+	depth            int       // 当前处理的深度
 	pointers         map[uintptr]int
-	ignoreNextType   bool
+	ignoreNextType   bool // 是否已经打印过类型信息
 	ignoreNextIndent bool
-	cs               *ConfigState
+	cs               *ConfigState // 所属的ConfigState
 }
 
-// indent performs indentation according to the depth level and cs.Indent
-// option.
+// 根据深度打印分隔符
 func (d *dumpState) indent() {
 	if d.ignoreNextIndent {
 		d.ignoreNextIndent = false
@@ -77,7 +76,7 @@ func (d *dumpState) unpackValue(v reflect.Value) reflect.Value {
 	return v
 }
 
-// dumpPtr handles formatting of pointers by indirecting them as necessary.
+// 解析指针进行打印，指针多层嵌套会一直向下迭代
 func (d *dumpState) dumpPtr(v reflect.Value) {
 	// Remove pointers at or below the current depth from map used to detect
 	// circular refs.
@@ -87,24 +86,24 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 		}
 	}
 
-	// Keep list of all dereferenced pointers to show later.
+	// 指针链
 	pointerChain := make([]uintptr, 0)
 
-	// Figure out how many levels of indirection there are by dereferencing
-	// pointers and unpacking interfaces down the chain while detecting circular
-	// references.
 	nilFound := false
 	cycleFound := false
 	indirects := 0
 	ve := v
 	for ve.Kind() == reflect.Ptr {
+		// 如果指针是空指针直接退出
 		if ve.IsNil() {
 			nilFound = true
 			break
 		}
 		indirects++
+		// 获取到指针的地址并加到打印链中
 		addr := ve.Pointer()
 		pointerChain = append(pointerChain, addr)
+
 		if pd, ok := d.pointers[addr]; ok && pd < d.depth {
 			cycleFound = true
 			indirects--
@@ -112,6 +111,7 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 		}
 		d.pointers[addr] = d.depth
 
+		// 取到指针指向的值，下次循环再次判断这个值是否是指针类型
 		ve = ve.Elem()
 		if ve.Kind() == reflect.Interface {
 			if ve.IsNil() {
@@ -122,14 +122,15 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 		}
 	}
 
-	// Display type information.
+	// 输出(*对象类型)，深度越深*越多
 	d.w.Write(openParenBytes)
 	d.w.Write(bytes.Repeat(asteriskBytes, indirects))
 	d.w.Write([]byte(ve.Type().String()))
 	d.w.Write(closeParenBytes)
 
-	// Display pointer information.
+	// 如果没有禁用打印指针地址将会打印指针的地址
 	if !d.cs.DisablePointerAddresses && len(pointerChain) > 0 {
+		// (-> 指针地址)
 		d.w.Write(openParenBytes)
 		for i, addr := range pointerChain {
 			if i > 0 {
@@ -140,7 +141,7 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 		d.w.Write(closeParenBytes)
 	}
 
-	// Display dereferenced value.
+	// 打印值
 	d.w.Write(openParenBytes)
 	switch {
 	case nilFound:
@@ -156,8 +157,7 @@ func (d *dumpState) dumpPtr(v reflect.Value) {
 	d.w.Write(closeParenBytes)
 }
 
-// dumpSlice handles formatting of arrays and slices.  Byte (uint8 under
-// reflection) arrays and slices are dumped in hexdump -C fashion.
+// 打印数组和切片
 func (d *dumpState) dumpSlice(v reflect.Value) {
 	// Determine whether this type should be hex dumped or not.  Also,
 	// for types which should be hexdumped, try to use the underlying data
@@ -244,26 +244,23 @@ func (d *dumpState) dumpSlice(v reflect.Value) {
 	}
 }
 
-// dump is the main workhorse for dumping a value.  It uses the passed reflect
-// value to figure out what kind of object we are dealing with and formats it
-// appropriately.  It is a recursive function, however circular data structures
-// are detected and handled properly.
+// 格式化要处理的对象
 func (d *dumpState) dump(v reflect.Value) {
-	// Handle invalid reflect values immediately.
+	// 无效的值直接输出 <invalid>
 	kind := v.Kind()
 	if kind == reflect.Invalid {
 		d.w.Write(invalidAngleBytes)
 		return
 	}
 
-	// Handle pointers specially.
+	// 指针类型处理
 	if kind == reflect.Ptr {
 		d.indent()
 		d.dumpPtr(v)
 		return
 	}
 
-	// Print type information unless already handled elsewhere.
+	// 打印类型信息，除非已在其它地方打印
 	if !d.ignoreNextType {
 		d.indent()
 		d.w.Write(openParenBytes)
@@ -271,10 +268,11 @@ func (d *dumpState) dump(v reflect.Value) {
 		d.w.Write(closeParenBytes)
 		d.w.Write(spaceBytes)
 	}
+
+	// 标记已经打印过类型信息了
 	d.ignoreNextType = false
 
-	// Display length and capacity if the built-in len and cap functions
-	// work with the value's kind and the len/cap itself is non-zero.
+	// 对于数组、切片、Chan类型会打印器长度和容量，Map、String类型会打印器长度
 	valueLen, valueCap := 0, 0
 	switch v.Kind() {
 	case reflect.Array, reflect.Slice, reflect.Chan:
@@ -309,10 +307,9 @@ func (d *dumpState) dump(v reflect.Value) {
 		}
 	}
 
+	// 输出不同类型的值
 	switch kind {
 	case reflect.Invalid:
-		// Do nothing.  We should never get here since invalid has already
-		// been handled above.
 
 	case reflect.Bool:
 		printBool(d.w, v.Bool())
@@ -359,18 +356,13 @@ func (d *dumpState) dump(v reflect.Value) {
 		d.w.Write([]byte(strconv.Quote(v.String())))
 
 	case reflect.Interface:
-		// The only time we should get here is for nil interfaces due to
-		// unpackValue calls.
 		if v.IsNil() {
 			d.w.Write(nilAngleBytes)
 		}
 
 	case reflect.Ptr:
-		// Do nothing.  We should never get here since pointers have already
-		// been handled above.
 
 	case reflect.Map:
-		// nil maps should be indicated as different than empty maps
 		if v.IsNil() {
 			d.w.Write(nilAngleBytes)
 			break
@@ -448,10 +440,10 @@ func (d *dumpState) dump(v reflect.Value) {
 	}
 }
 
-// fdump is a helper function to consolidate the logic from the various public
-// methods which take varying writers and config states.
+// 整合进行打印
 func fdump(cs *ConfigState, w io.Writer, a ...interface{}) {
 	for _, arg := range a {
+		// 空值直接输出 (interface {}) <nil> \n
 		if arg == nil {
 			w.Write(interfaceBytes)
 			w.Write(spaceBytes)
@@ -467,43 +459,19 @@ func fdump(cs *ConfigState, w io.Writer, a ...interface{}) {
 	}
 }
 
-// Fdump formats and displays the passed arguments to io.Writer w.  It formats
-// exactly the same as Dump.
+// 将格式化的字符打印到指定位置
 func Fdump(w io.Writer, a ...interface{}) {
 	fdump(&Config, w, a...)
 }
 
-// Sdump returns a string with the passed arguments formatted exactly the same
-// as Dump.
+// 获取到打印到控制台的字符
 func Sdump(a ...interface{}) string {
 	var buf bytes.Buffer
 	fdump(&Config, &buf, a...)
 	return buf.String()
 }
 
-/*
-Dump displays the passed parameters to standard out with newlines, customizable
-indentation, and additional debug information such as complete types and all
-pointer addresses used to indirect to the final value.  It provides the
-following features over the built-in printing facilities provided by the fmt
-package:
-
-	* Pointers are dereferenced and followed
-	* Circular data structures are detected and handled properly
-	* Custom Stringer/error interfaces are optionally invoked, including
-	  on unexported types
-	* Custom types which only implement the Stringer/error interfaces via
-	  a pointer receiver are optionally invoked when passing non-pointer
-	  variables
-	* Byte arrays and slices are dumped like the hexdump -C command which
-	  includes offsets, byte values in hex, and ASCII output
-
-The configuration options are controlled by an exported package global,
-spew.Config.  See ConfigState for options documentation.
-
-See Fdump if you would prefer dumping to an arbitrary io.Writer or Sdump to
-get the formatted result as a string.
-*/
+// 将对象打印到控制台中
 func Dump(a ...interface{}) {
 	fdump(&Config, os.Stdout, a...)
 }

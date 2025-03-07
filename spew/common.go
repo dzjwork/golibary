@@ -171,7 +171,7 @@ func handleMethods(cs *ConfigState, w io.Writer, v reflect.Value) (handled bool)
 	return false
 }
 
-// printBool outputs a boolean value as true or false to Writer w.
+// 打印布尔值
 func printBool(w io.Writer, val bool) {
 	if val {
 		w.Write(trueBytes)
@@ -180,24 +180,22 @@ func printBool(w io.Writer, val bool) {
 	}
 }
 
-// printInt outputs a signed integer value to Writer w.
+// 打印int值
 func printInt(w io.Writer, val int64, base int) {
 	w.Write([]byte(strconv.FormatInt(val, base)))
 }
 
-// printUint outputs an unsigned integer value to Writer w.
+// 打印Uint值
 func printUint(w io.Writer, val uint64, base int) {
 	w.Write([]byte(strconv.FormatUint(val, base)))
 }
 
-// printFloat outputs a floating point value using the specified precision,
-// which is expected to be 32 or 64bit, to Writer w.
+// 打印Float值
 func printFloat(w io.Writer, val float64, precision int) {
 	w.Write([]byte(strconv.FormatFloat(val, 'g', -1, precision)))
 }
 
-// printComplex outputs a complex value using the specified float precision
-// for the real and imaginary parts to Writer w.
+// 打印复数
 func printComplex(w io.Writer, c complex128, floatPrecision int) {
 	r := real(c)
 	w.Write(openParenBytes)
@@ -211,20 +209,19 @@ func printComplex(w io.Writer, c complex128, floatPrecision int) {
 	w.Write(closeParenBytes)
 }
 
-// printHexPtr outputs a uintptr formatted as hexadecimal with a leading '0x'
-// prefix to Writer w.
+// 输出十六进制的指针地址
 func printHexPtr(w io.Writer, p uintptr) {
-	// Null pointer.
+	// <nil>
 	num := uint64(p)
 	if num == 0 {
 		w.Write(nilAngleBytes)
 		return
 	}
 
-	// Max uint64 is 16 bytes in hex + 2 bytes for '0x' prefix
+	// 64位 用16个十六进制字符 + 0x，一共需要18字节
 	buf := make([]byte, 18)
 
-	// It's simpler to construct the hex string right to left.
+	// 从右向左构建指针地址
 	base := uint64(16)
 	i := len(buf) - 1
 	for num >= base {
@@ -234,13 +231,13 @@ func printHexPtr(w io.Writer, p uintptr) {
 	}
 	buf[i] = hexDigits[num]
 
-	// Add '0x' prefix.
+	// 0x前缀
 	i--
 	buf[i] = 'x'
 	i--
 	buf[i] = '0'
 
-	// Strip unused leading bytes.
+	// 删除没有使用的前导字节
 	buf = buf[i:]
 	w.Write(buf)
 }

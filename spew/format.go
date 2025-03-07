@@ -13,8 +13,8 @@ const supportedFlags = "0-+# "
 
 // 该结构实现了fmt，包含了格式化的状态
 type formatState struct {
-	value          interface{}
-	fs             fmt.State
+	value          interface{} // 需要被格式打印的内容
+	fs             fmt.State   // 可以打印格式化的输出、设置标志位、查看宽度、精度标志位
 	depth          int
 	pointers       map[uintptr]int
 	ignoreNextType bool
@@ -40,22 +40,23 @@ func (f *formatState) buildDefaultFormat() (format string) {
 	return format
 }
 
-// constructOrigFormat recreates the original format string including precision
-// and width information to pass along to the standard fmt package.  This allows
-// automatic deferral of all format strings this package doesn't support.
+// 创建包含精度、宽度、支持的占位符字符串
 func (f *formatState) constructOrigFormat(verb rune) (format string) {
 	buf := bytes.NewBuffer(percentBytes)
 
+	// 查看State是否支持对应的占位符，如果支持则加到buf中
 	for _, flag := range supportedFlags {
 		if f.fs.Flag(int(flag)) {
 			buf.WriteRune(flag)
 		}
 	}
 
+	// 获取到State的宽度
 	if width, ok := f.fs.Width(); ok {
 		buf.WriteString(strconv.Itoa(width))
 	}
 
+	// 获取到State的精度
 	if precision, ok := f.fs.Precision(); ok {
 		buf.Write(precisionBytes)
 		buf.WriteString(strconv.Itoa(precision))
@@ -82,9 +83,9 @@ func (f *formatState) unpackValue(v reflect.Value) reflect.Value {
 	return v
 }
 
-// formatPtr handles formatting of pointers by indirecting them as necessary.
+// 格式化指针类型的打印
 func (f *formatState) formatPtr(v reflect.Value) {
-	// Display nil if top level pointer is nil.
+	// 如果指针为nil则显示<nil>
 	showTypes := f.fs.Flag('#')
 	if v.IsNil() && (!showTypes || f.ignoreNextType) {
 		f.fs.Write(nilAngleBytes)
@@ -180,14 +181,14 @@ func (f *formatState) formatPtr(v reflect.Value) {
 // dealing with and formats it appropriately.  It is a recursive function,
 // however circular data structures are detected and handled properly.
 func (f *formatState) format(v reflect.Value) {
-	// Handle invalid reflect values immediately.
+	// 如果v没有正确的被初始化直接输出<invalid>
 	kind := v.Kind()
 	if kind == reflect.Invalid {
 		f.fs.Write(invalidAngleBytes)
 		return
 	}
 
-	// Handle pointers specially.
+	// 指针类型打印
 	if kind == reflect.Ptr {
 		f.formatPtr(v)
 		return
@@ -347,18 +348,18 @@ func (f *formatState) format(v reflect.Value) {
 	}
 }
 
-// Format satisfies the fmt.Formatter interface. See NewFormatter for usage
-// details.
+// 实现了fmt.Formatter接口
 func (f *formatState) Format(fs fmt.State, verb rune) {
 	f.fs = fs
 
-	// Use standard formatting for verbs that are not v.
+	// 对除了v占位符以外的占位符进行格式化打印
 	if verb != 'v' {
 		format := f.constructOrigFormat(verb)
 		fmt.Fprintf(fs, format, f.value)
 		return
 	}
 
+	// 如果打印的值是空，并且有#标识符则输出(interface {}) <nil>，如果没有#标识符输出<nil>
 	if f.value == nil {
 		if fs.Flag('#') {
 			fs.Write(interfaceBytes)
@@ -367,34 +368,18 @@ func (f *formatState) Format(fs fmt.State, verb rune) {
 		return
 	}
 
+	// 格式化输出对象的类型
 	f.format(reflect.ValueOf(f.value))
 }
 
-// newFormatter is a helper function to consolidate the logic from the various
-// public methods which take varying config states.
+// 创建一个新的格式化器
 func newFormatter(cs *ConfigState, v interface{}) fmt.Formatter {
 	fs := &formatState{value: v, cs: cs}
 	fs.pointers = make(map[uintptr]int)
 	return fs
 }
 
-/*
-NewFormatter returns a custom formatter that satisfies the fmt.Formatter
-interface.  As a result, it integrates cleanly with standard fmt package
-printing functions.  The formatter is useful for inline printing of smaller data
-types similar to the standard %v format specifier.
-
-The custom formatter only responds to the %v (most compact), %+v (adds pointer
-addresses), %#v (adds types), or %#+v (adds types and pointer addresses) verb
-combinations.  Any other verbs such as %x and %q will be sent to the the
-standard fmt package for formatting.  In addition, the custom formatter ignores
-the width and precision arguments (however they will still work on the format
-specifiers not handled by the custom formatter).
-
-Typically this function shouldn't be called directly.  It is much easier to make
-use of the custom formatter by calling one of the convenience functions such as
-Printf, Println, or Fprintf.
-*/
+// 创建一个新的格式化器
 func NewFormatter(v interface{}) fmt.Formatter {
 	return newFormatter(&Config, v)
 }

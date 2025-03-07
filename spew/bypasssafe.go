@@ -1,11 +1,11 @@
 package spew
 
-import "reflect"
+// import "reflect"
 
-const (
-	UnsafeDisabled = true
-)
+// const (
+// 	UnsafeDisabled = true
+// )
 
-func unsafeReflectValue(v reflect.Value) reflect.Value {
-	return v
-}
+// func unsafeReflectValue(v reflect.Value) reflect.Value {
+// 	return v
+// }
