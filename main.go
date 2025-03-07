@@ -4,8 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"golibary/serial"
-	"golibary/spew"
-	"golibary/yaml"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,7 +41,6 @@ func main() {
 	// fmt.Println(15*1000 - 12912)
 	// fmt.Println((15*1000 - 12912) * 100 / (15 * 1000))
 	// waitCount.Wait()
-	spew.Dump(yaml.Test)
 }
 
 // 打印串口读取到的数据
