@@ -7,20 +7,21 @@ import (
 )
 
 var (
-	// std is the name of the standard logger in stdlib `log`
+	// std 日志实例
 	std = New()
 )
 
+// StandardLogger 获取到标准日志
 func StandardLogger() *Logger {
 	return std
 }
 
-// SetOutput sets the standard logger output.
+// SetOutput 设置标准日志的输出流
 func SetOutput(out io.Writer) {
 	std.SetOutput(out)
 }
 
-// SetFormatter sets the standard logger formatter.
+// SetFormatter 设置标准日志的格式化器
 func SetFormatter(formatter Formatter) {
 	std.SetFormatter(formatter)
 }
@@ -31,60 +32,47 @@ func SetReportCaller(include bool) {
 	std.SetReportCaller(include)
 }
 
-// SetLevel sets the standard logger level.
+// SetLevel 设置标准日志的级别
 func SetLevel(level Level) {
 	std.SetLevel(level)
 }
 
-// GetLevel returns the standard logger level.
+// GetLevel 获取到标准日志的级别
 func GetLevel() Level {
 	return std.GetLevel()
 }
 
-// IsLevelEnabled checks if the log level of the standard logger is greater than the level param
+// IsLevelEnabled 查看标准日志的级别是否大于指定的级别
 func IsLevelEnabled(level Level) bool {
 	return std.IsLevelEnabled(level)
 }
 
-// AddHook adds a hook to the standard logger hooks.
+// AddHook 标准日志注册一个钩子函数
 func AddHook(hook Hook) {
 	std.AddHook(hook)
 }
 
-// WithError creates an entry from the standard logger and adds an error to it, using the value defined in ErrorKey as key.
+// WithError 创建一个带有error字段的Entry
 func WithError(err error) *Entry {
 	return std.WithField(ErrorKey, err)
 }
 
-// WithContext creates an entry from the standard logger and adds a context to it.
+// WithContext 创建一个带有上下文的Entry
 func WithContext(ctx context.Context) *Entry {
 	return std.WithContext(ctx)
 }
 
-// WithField creates an entry from the standard logger and adds a field to
-// it. If you want multiple fields, use `WithFields`.
-//
-// Note that it doesn't log until you call Debug, Print, Info, Warn, Fatal
-// or Panic on the Entry it returns.
+// WithField 创建一个带有指定字段的Entry
 func WithField(key string, value interface{}) *Entry {
 	return std.WithField(key, value)
 }
 
-// WithFields creates an entry from the standard logger and adds multiple
-// fields to it. This is simply a helper for `WithField`, invoking it
-// once for each field.
-//
-// Note that it doesn't log until you call Debug, Print, Info, Warn, Fatal
-// or Panic on the Entry it returns.
+// WithFields 创建一个带有指定多个字段的Entry
 func WithFields(fields Fields) *Entry {
 	return std.WithFields(fields)
 }
 
-// WithTime creates an entry from the standard logger and overrides the time of
-// logs generated with it.
-//
-// Note that it doesn't log until you call Debug, Print, Info, Warn, Fatal
-// or Panic on the Entry it returns.
+// WithTime 根据时间创建一个新的Entry
 func WithTime(t time.Time) *Entry {
 	return std.WithTime(t)
 }

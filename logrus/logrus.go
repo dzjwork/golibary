@@ -9,22 +9,23 @@ import (
 // 存储字段信息的Map
 type Fields map[string]interface{}
 
+// Level 表示日志的级别
 type Level uint32
 
 const (
-	// 系统级错误日志
+	// PanicLevel 系统级错误日志
 	PanicLevel Level = iota
-	// 致命的错误日志
+	// FatalLevel 致命的错误日志
 	FatalLevel
-	// 错误日志
+	// ErrorLevel 错误日志
 	ErrorLevel
-	// 警告日志
+	// WarnLevel 警告日志
 	WarnLevel
-	// 普通日志
+	// InfoLevel 普通日志
 	InfoLevel
-	// debug日志
+	// DebugLevel debug日志
 	DebugLevel
-	// 跟踪日志
+	// TraceLevel 跟踪日志
 	TraceLevel
 )
 
@@ -112,7 +113,7 @@ var (
 	_ StdLogger = &Logger{}
 )
 
-// 表示标准日志
+// StdLogger 表示标准日志，提供了最基础的打印日志方法
 type StdLogger interface {
 	Print(...interface{})
 	Printf(string, ...interface{})
@@ -127,7 +128,7 @@ type StdLogger interface {
 	Panicln(...interface{})
 }
 
-// 支持字段的日志
+// FieldLogger 支持字段的日志，提供了格式化打印字段的日志
 type FieldLogger interface {
 	WithField(key string, value interface{}) *Entry
 	WithFields(fields Fields) *Entry
@@ -168,7 +169,7 @@ type FieldLogger interface {
 	// IsPanicEnabled() bool
 }
 
-// 对支持字段的日志的扩展（通常不应该使用这个日志）
+// Ext1FieldLogger 对支持字段的日志的扩展（通常不应该使用这个日志）
 type Ext1FieldLogger interface {
 	FieldLogger
 	Tracef(format string, args ...interface{})

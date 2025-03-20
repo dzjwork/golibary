@@ -13,6 +13,7 @@ const (
 	FieldKeyFile           = "file"
 )
 
+// Formatter 表示通用的格式化器
 type Formatter interface {
 	Format(*Entry) ([]byte, error)
 }

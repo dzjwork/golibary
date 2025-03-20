@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"golibary/logrus"
 	"golibary/serial"
 	"strconv"
 	"strings"
@@ -11,19 +12,20 @@ import (
 )
 
 func main() {
-	var waitCount sync.WaitGroup
-	c := &serial.Config{Name: "COM4", Baud: 9600}
+	//var waitCount sync.WaitGroup
+	//c := &serial.Config{Name: "COM4", Baud: 9600}
+	//
+	//fd, err := serial.OpenPort(c)
+	//
+	//if err != nil {
+	//	fmt.Println("串口打开失败")
+	//} else {
+	//	fmt.Println("成功打开串口", fd)
+	//}
+	//
+	//waitCount.Add(2)
 
-	fd, err := serial.OpenPort(c)
-
-	if err != nil {
-		fmt.Println("串口打开失败")
-	} else {
-		fmt.Println("成功打开串口", fd)
-	}
-
-	waitCount.Add(2)
-
+	logrus.Print("this", "is", "error")
 	// go ReadData(fd, &waitCount)
 	// StartzMulti(fd, &waitCount)
 
@@ -41,6 +43,7 @@ func main() {
 	// fmt.Println(15*1000 - 12912)
 	// fmt.Println((15*1000 - 12912) * 100 / (15 * 1000))
 	// waitCount.Wait()
+
 }
 
 // 打印串口读取到的数据

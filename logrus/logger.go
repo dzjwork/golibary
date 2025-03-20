@@ -38,6 +38,7 @@ func (mw *MutexWrap) Disable() {
 // 表示退出程序的函数
 type exitFunc func(int)
 
+// Logger 表示日志，实现了日志接口以及支持字段的日志接口
 type Logger struct {
 	// 输出日志的流
 	Out io.Writer
@@ -61,7 +62,7 @@ type Logger struct {
 	BufferPool BufferPool
 }
 
-// 创建一个新的Logger实例
+// New 创建一个新的Logger实例
 func New() *Logger {
 	return &Logger{
 		Out:          os.Stderr,
@@ -88,14 +89,14 @@ func (logger *Logger) releaseEntry(entry *Entry) {
 	logger.entryPool.Put(entry)
 }
 
-// 根据字段获取一个新的Entry，使用完之后会返回到缓冲池中
+// WithField 根据字段获取一个新的Entry，使用完之后将创建新Entry的Entry返回缓冲池中
 func (logger *Logger) WithField(key string, value interface{}) *Entry {
 	entry := logger.newEntry()
 	defer logger.releaseEntry(entry)
 	return entry.WithField(key, value)
 }
 
-// 根据多个字段获取一个新的Entry，使用完之后会返回到缓冲池中
+// WithFields 根据多个字段获取一个新的Entry，使用完之后将创建新Entry的Entry返回缓冲池中
 func (logger *Logger) WithFields(fields Fields) *Entry {
 	entry := logger.newEntry()
 	defer logger.releaseEntry(entry)
@@ -109,14 +110,14 @@ func (logger *Logger) WithError(err error) *Entry {
 	return entry.WithError(err)
 }
 
-// 根据上下文创建一个新的Entry，使用完之后返回到缓冲池中
+// WithContext 根据上下文创建一个新的Entry，使用完之后将创建新Entry的Entry返回缓冲池中
 func (logger *Logger) WithContext(ctx context.Context) *Entry {
 	entry := logger.newEntry()
 	defer logger.releaseEntry(entry)
 	return entry.WithContext(ctx)
 }
 
-// 根据时间创建一个新的Entry，使用完之后返回到缓冲池中
+// WithTime 根据时间创建一个新的Entry，使用完之后将创建新Entry的Entry返回缓冲池中
 func (logger *Logger) WithTime(t time.Time) *Entry {
 	entry := logger.newEntry()
 	defer logger.releaseEntry(entry)
@@ -133,12 +134,12 @@ func (logger *Logger) level() Level {
 	return Level(atomic.LoadUint32((*uint32)(&logger.Level)))
 }
 
-// 设置日志级别
+// SetLevel 设置日志级别
 func (logger *Logger) SetLevel(level Level) {
 	atomic.StoreUint32((*uint32)(&logger.Level), uint32(level))
 }
 
-// 获取到日志的级别
+// GetLevel 获取到日志的级别
 func (logger *Logger) GetLevel() Level {
 	return logger.level()
 }
@@ -240,7 +241,7 @@ func (logger *Logger) Panicf(format string, args ...interface{}) {
 	logger.Logf(PanicLevel, format, args...)
 }
 
-// 普通的方式打印日志
+// Log 按照日志级别打印日志
 func (logger *Logger) Log(level Level, args ...interface{}) {
 	if logger.IsLevelEnabled(level) {
 		entry := logger.newEntry()
@@ -249,14 +250,17 @@ func (logger *Logger) Log(level Level, args ...interface{}) {
 	}
 }
 
+// Trace 打印跟踪日志
 func (logger *Logger) Trace(args ...interface{}) {
 	logger.Log(TraceLevel, args...)
 }
 
+// Debug 打印debug日志
 func (logger *Logger) Debug(args ...interface{}) {
 	logger.Log(DebugLevel, args...)
 }
 
+// Info 打印普通日志
 func (logger *Logger) Info(args ...interface{}) {
 	logger.Log(InfoLevel, args...)
 }

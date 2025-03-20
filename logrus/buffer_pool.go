@@ -9,6 +9,7 @@ var (
 	bufferPool BufferPool
 )
 
+// BufferPool 缓冲池，可读可写
 type BufferPool interface {
 	Put(*bytes.Buffer)
 	Get() *bytes.Buffer
@@ -27,7 +28,7 @@ func (p *defaultPool) Get() *bytes.Buffer {
 	return p.pool.Get().(*bytes.Buffer)
 }
 
-// 设置bufferPool
+// SetBufferPool 设置bufferPool
 func SetBufferPool(bp BufferPool) {
 	bufferPool = bp
 }

@@ -45,7 +45,7 @@ type OpCode struct {
 	J2  int
 }
 
-// 用于比较两个序列的相似度
+// SequenceMatcher 用于比较两个序列的相似度
 type SequenceMatcher struct {
 	a              []string // 序列1
 	b              []string // 序列2
@@ -59,7 +59,7 @@ type SequenceMatcher struct {
 	opCodes        []OpCode
 }
 
-// 新建一个差异比较对象
+// NewMatcher 新建一个差异比较对象
 func NewMatcher(a, b []string) *SequenceMatcher {
 	m := SequenceMatcher{autoJunk: true}
 	m.SetSeqs(a, b)
@@ -147,16 +147,16 @@ func (m *SequenceMatcher) isBJunk(s string) bool {
 	return ok
 }
 
-// Find longest matching block in a[alo:ahi] and b[blo:bhi].
+// 在a[alo:ahi]和b[blo:bhi]中找到最长的匹配块
 //
 // If IsJunk is not defined:
 //
-// Return (i,j,k) such that a[i:i+k] is equal to b[j:j+k], where
+// 返回 (i,j,k) 使得 a[i:i+k] 等于 b[j:j+k], 其中
 //
 //	alo <= i <= i+k <= ahi
 //	blo <= j <= j+k <= bhi
 //
-// and for all (i',j',k') meeting those conditions,
+// 对于满足这些条件的所有 (i',j',k')
 //
 //	k >= k'
 //	i <= i'
@@ -247,8 +247,9 @@ func (m *SequenceMatcher) findLongestMatch(alo, ahi, blo, bhi int) Match {
 	return Match{A: besti, B: bestj, Size: bestsize}
 }
 
-// Return list of triples describing matching subsequences.
-//
+// 返回描述匹配子序列的三元组列表
+// 每个三元组都是(i,j,n)格式，a[i:i+n] == b[j:j+n]
+// 三元组在i、j中单调递增，如果(i, j, n)和(i', j', n')是列表中相邻的三元组，并且第二个不是列表中最后一个三元组则i+n != i' 或 j+n != j'
 // Each triple is of the form (i, j, n), and means that
 // a[i:i+n] == b[j:j+n].  The triples are monotonically increasing in
 // i and in j. It's also guaranteed that if (i, j, n) and (i', j', n') are
@@ -259,6 +260,7 @@ func (m *SequenceMatcher) findLongestMatch(alo, ahi, blo, bhi int) Match {
 // The last triple is a dummy, (len(a), len(b), 0), and is the only
 // triple with n==0.
 func (m *SequenceMatcher) GetMatchingBlocks() []Match {
+	// 已经获取过了直接退出
 	if m.matchingBlocks != nil {
 		return m.matchingBlocks
 	}
@@ -311,19 +313,14 @@ func (m *SequenceMatcher) GetMatchingBlocks() []Match {
 	return m.matchingBlocks
 }
 
-// Return list of 5-tuples describing how to turn a into b.
+// 返回一个描述列表，其描述了如何将a转为b
+// 每个元组的格式为(tag, i1, i2, j1, j2)，第一个元组的i1 == j1 == 0，其它的元组i1 == 前一个元组的i2，j1 == 前一个元组的j2
 //
-// Each tuple is of the form (tag, i1, i2, j1, j2).  The first tuple
-// has i1 == j1 == 0, and remaining tuples have i1 == the i2 from the
-// tuple preceding it, and likewise for j1 == the previous j2.
+// 'r' (replace):  a[i1:i2] 应替换为 b[j1:j2]
 //
-// The tags are characters, with these meanings:
+// 'd' (delete):   应删除a[i1:i2], 在本例中j1==j2
 //
-// 'r' (replace):  a[i1:i2] should be replaced by b[j1:j2]
-//
-// 'd' (delete):   a[i1:i2] should be deleted, j1==j2 in this case.
-//
-// 'i' (insert):   b[j1:j2] should be inserted at a[i1:i1], i1==i2 in this case.
+// 'i' (insert):   b[j1:j2] 应插入 a[i1:i1], 在本例中i1==i2
 //
 // 'e' (equal):    a[i1:i2] == b[j1:j2]
 func (m *SequenceMatcher) GetOpCodes() []OpCode {
@@ -481,16 +478,16 @@ func formatRangeUnified(start, stop int) string {
 	return fmt.Sprintf("%d,%d", beginning, length)
 }
 
-// Unified diff parameters
+// UnifiedDiff 表示需要比较差异的实例结构
 type UnifiedDiff struct {
-	A        []string // First sequence lines
-	FromFile string   // First file name
-	FromDate string   // First file time
-	B        []string // Second sequence lines
-	ToFile   string   // Second file name
-	ToDate   string   // Second file time
-	Eol      string   // Headers end of line, defaults to LF
-	Context  int      // Number of context lines
+	A        []string // 第一个需要进行比较的多行字符串
+	FromFile string   // 第一个需要进行比较的多行字符串来自哪个文件
+	FromDate string   // 第一个需要进行比较的多行字符串文件的创建时间
+	B        []string // 第二个需要进行比较的多行字符串
+	ToFile   string   // 第二个需要进行比较的多行字符串来自哪个文件
+	ToDate   string   // 第二个需要进行比较的多行字符串文件的创建时间
+	Eol      string   // 页眉行尾默认为LF，也就是“\n”
+	Context  int      // 上下文行数
 }
 
 // Compare two sequences of lines; generate the delta as a unified diff.
@@ -515,15 +512,18 @@ type UnifiedDiff struct {
 func WriteUnifiedDiff(writer io.Writer, diff UnifiedDiff) error {
 	buf := bufio.NewWriter(writer)
 	defer buf.Flush()
+	// 将内容格式化写到缓冲区中
 	wf := func(format string, args ...interface{}) error {
 		_, err := buf.WriteString(fmt.Sprintf(format, args...))
 		return err
 	}
+	// 将字符串直接写到缓冲区中
 	ws := func(s string) error {
 		_, err := buf.WriteString(s)
 		return err
 	}
 
+	// 默认换行符
 	if len(diff.Eol) == 0 {
 		diff.Eol = "\n"
 	}
@@ -531,6 +531,7 @@ func WriteUnifiedDiff(writer io.Writer, diff UnifiedDiff) error {
 	started := false
 	m := NewMatcher(diff.A, diff.B)
 	for _, g := range m.GetGroupedOpCodes(diff.Context) {
+		// 刚开始要记录文件名和文件创建时间信息
 		if !started {
 			started = true
 			fromDate := ""
@@ -587,7 +588,7 @@ func WriteUnifiedDiff(writer io.Writer, diff UnifiedDiff) error {
 	return nil
 }
 
-// Like WriteUnifiedDiff but returns the diff a string.
+// GetUnifiedDiffString 获取到两个字符的差异信息
 func GetUnifiedDiffString(diff UnifiedDiff) (string, error) {
 	w := &bytes.Buffer{}
 	err := WriteUnifiedDiff(w, diff)
@@ -719,8 +720,7 @@ func GetContextDiffString(diff ContextDiff) (string, error) {
 	return string(w.Bytes()), err
 }
 
-// Split a string on "\n" while preserving them. The output can be used
-// as input for UnifiedDiff and ContextDiff structures.
+// 根据 "\n"分割行
 func SplitLines(s string) []string {
 	lines := strings.SplitAfter(s, "\n")
 	lines[len(lines)-1] += "\n"

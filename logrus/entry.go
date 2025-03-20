@@ -33,6 +33,7 @@ func init() {
 	minimumCallerDepth = 1
 }
 
+// ErrorKey 错误消息的键名
 var ErrorKey = "error"
 
 type Entry struct {
@@ -64,7 +65,7 @@ type Entry struct {
 	err string
 }
 
-// 创建一个新的Entry实例
+// NewEntry 创建一个新的Entry实例
 func NewEntry(logger *Logger) *Entry {
 	return &Entry{
 		Logger: logger,
@@ -73,8 +74,9 @@ func NewEntry(logger *Logger) *Entry {
 	}
 }
 
-// 拷贝当前Entry得到一个新的Entry
+// Dup 拷贝当前Entry得到一个新的Entry
 func (entry *Entry) Dup() *Entry {
+	// 拷贝段字段信息
 	data := make(Fields, len(entry.Data))
 	for k, v := range entry.Data {
 		data[k] = v
@@ -97,13 +99,17 @@ func (entry *Entry) String() (string, error) {
 	return str, nil
 }
 
-// 将Fields添加到Entry中
+// WithFields 根据当前Entry创建一个新的Entry，并将字段加到新的Entry中
 func (entry *Entry) WithFields(fields Fields) *Entry {
+	// 将原先entry中的段信息拷贝过来
 	data := make(Fields, len(entry.Data)+len(fields))
 	for k, v := range entry.Data {
 		data[k] = v
 	}
+
+	// 记录无法成功添加的字段
 	fieldErr := entry.err
+	// 新加字段的值不能是一个函数，如果是一个函数将无法添加到字段集中并进行记录
 	for k, v := range fields {
 		isErrField := false
 		if t := reflect.TypeOf(v); t != nil {
@@ -126,7 +132,7 @@ func (entry *Entry) WithFields(fields Fields) *Entry {
 	return &Entry{Logger: entry.Logger, Data: data, Time: entry.Time, err: fieldErr, Context: entry.Context}
 }
 
-// 添加单个字段到Entry中
+// WithField 添加单个字段到Entry中获取一个新的Entry实例
 func (entry *Entry) WithField(key string, value interface{}) *Entry {
 	return entry.WithFields(Fields{key: value})
 }
@@ -136,8 +142,9 @@ func (entry *Entry) WithError(err error) *Entry {
 	return entry.WithField(ErrorKey, err)
 }
 
-// 根据上下文创建一个新的Entry
+// WithContext 根据上下文创建一个新的Entry
 func (entry *Entry) WithContext(ctx context.Context) *Entry {
+	// 将原先entry中的段信息拷贝过来
 	dataCopy := make(Fields, len(entry.Data))
 	for k, v := range entry.Data {
 		dataCopy[k] = v
@@ -145,8 +152,9 @@ func (entry *Entry) WithContext(ctx context.Context) *Entry {
 	return &Entry{Logger: entry.Logger, Data: dataCopy, Time: entry.Time, err: entry.err, Context: ctx}
 }
 
-// 根据时间创建一个新的Entry
+// WithTime 根据时间创建一个新的Entry
 func (entry *Entry) WithTime(t time.Time) *Entry {
+	// 将原先entry中的段信息拷贝过来
 	dataCopy := make(Fields, len(entry.Data))
 	for k, v := range entry.Data {
 		dataCopy[k] = v
@@ -222,6 +230,7 @@ func (entry *Entry) getBufferPool() (pool BufferPool) {
 func (entry *Entry) fireHooks() {
 	var tmpHooks LevelHooks
 	entry.Logger.mu.Lock()
+	// 拷贝出来钩子函数
 	tmpHooks = make(LevelHooks, len(entry.Logger.Hooks))
 	for k, v := range entry.Logger.Hooks {
 		tmpHooks[k] = v
@@ -249,7 +258,7 @@ func (entry *Entry) write() {
 	}
 }
 
-// 打印日志
+// 按照日志级别打印日志
 func (entry *Entry) log(level Level, msg string) {
 	var buffer *bytes.Buffer
 
@@ -295,85 +304,102 @@ func (entry *Entry) log(level Level, msg string) {
 	}
 }
 
-// Entry的日志级别必须大于指定的级别才会打印日志，否则不打印
+// Log 根据日志Entry日志级别打印日志，Entry的日志级别必须大于指定的级别才会打印日志，否则不打印
 func (entry *Entry) Log(level Level, args ...interface{}) {
 	if entry.Logger.IsLevelEnabled(level) {
 		entry.log(level, fmt.Sprint(args...))
 	}
 }
 
+// Trace 打印跟踪日志
 func (entry *Entry) Trace(args ...interface{}) {
 	entry.Log(TraceLevel, args...)
 }
 
+// Debug 打印debug日志
 func (entry *Entry) Debug(args ...interface{}) {
 	entry.Log(DebugLevel, args...)
 }
 
+// Print 打印普通日志
 func (entry *Entry) Print(args ...interface{}) {
 	entry.Info(args...)
 }
 
+// Info 打印普通日志
 func (entry *Entry) Info(args ...interface{}) {
 	entry.Log(InfoLevel, args...)
 }
 
+// Warn 打印警告日志
 func (entry *Entry) Warn(args ...interface{}) {
 	entry.Log(WarnLevel, args...)
 }
 
+// Warning 警告日志
 func (entry *Entry) Warning(args ...interface{}) {
 	entry.Warn(args...)
 }
 
+// 警告日志
 func (entry *Entry) Error(args ...interface{}) {
 	entry.Log(ErrorLevel, args...)
 }
 
+// Fatal 致命错误日志
 func (entry *Entry) Fatal(args ...interface{}) {
 	entry.Log(FatalLevel, args...)
 	entry.Logger.Exit(1)
 }
 
+// Panic 系统错误日志
 func (entry *Entry) Panic(args ...interface{}) {
 	entry.Log(PanicLevel, args...)
 }
 
-// 按照指定的格式打印日志，Entry的日志级别必须大于指定的级别才会打印日志，否则不打印
+// Logf 按照指定的格式打印日志，Entry的日志级别必须大于指定的级别才会打印日志，否则不打印
 func (entry *Entry) Logf(level Level, format string, args ...interface{}) {
 	if entry.Logger.IsLevelEnabled(level) {
 		entry.Log(level, fmt.Sprintf(format, args...))
 	}
 }
 
+// Tracef 格式化打印跟踪日志
 func (entry *Entry) Tracef(format string, args ...interface{}) {
 	entry.Logf(TraceLevel, format, args...)
 }
 
+// Debugf 格式化打印debug日志
 func (entry *Entry) Debugf(format string, args ...interface{}) {
 	entry.Logf(DebugLevel, format, args...)
 }
 
+// Infof 格式化打印普通日志
 func (entry *Entry) Infof(format string, args ...interface{}) {
 	entry.Logf(InfoLevel, format, args...)
 }
 
+// Printf 格式化打印普通日志
 func (entry *Entry) Printf(format string, args ...interface{}) {
 	entry.Infof(format, args...)
 }
 
+// Warnf 格式化打印警告日志
 func (entry *Entry) Warnf(format string, args ...interface{}) {
 	entry.Logf(WarnLevel, format, args...)
 }
 
+// Warningf 格式化打印警告日志
 func (entry *Entry) Warningf(format string, args ...interface{}) {
 	entry.Warnf(format, args...)
 }
 
+// Errorf 格式化打印错误日志
 func (entry *Entry) Errorf(format string, args ...interface{}) {
 	entry.Logf(ErrorLevel, format, args...)
 }
 
+// 格式化打印
 func (entry *Entry) Fatalf(format string, args ...interface{}) {
 	entry.Logf(FatalLevel, format, args...)
 	entry.Logger.Exit(1)
